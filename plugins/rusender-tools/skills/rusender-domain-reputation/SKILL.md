@@ -62,7 +62,9 @@ The skill runs unchanged in Codex and Claude Code. RuSender MCP tools are referr
 
 ## Dashboard requirements
 
-The template fixes the skeleton of a one-page report: a portfolio summary (stat tiles), one section per domain with authentication table, registration, Postmaster status, sending tiles, a per-day stacked bar chart, a provider table, findings and recommended actions, and a closing "what could not be verified" block fed from `unverified`. Charts are inline SVG and the page works offline. Adapt wording, density and the number of findings to the actual data; do not invent numbers that the snapshot does not contain, and do not drop the "what could not be verified" block even when it is empty.
+The template fixes the skeleton of a one-page report: a portfolio summary (stat tiles), one section per domain with authentication table, a blacklist summary, registration, Postmaster status, sending tiles, a per-day stacked bar chart, a provider table, findings and recommended actions, and a closing "what could not be verified" block fed from `unverified`.
+
+The blacklist card sits in the domain section next to registration, not in the closing block: fill `blacklist.state` (`unknown` when the scraper reported no hits, `critical` or `attention` only for assessed hits), `blacklist.label` with how many lists answered and the reminder that no hits is not proof of a clean domain, and `blacklist.check_url` with the Spamhaus lookup for that domain (`https://check.spamhaus.org/results/?query=<domain>`) so the reader can double-check by hand. Keep the link visible even when the scraper found nothing. Charts are inline SVG and the page works offline. Adapt wording, density and the number of findings to the actual data; do not invent numbers that the snapshot does not contain, and do not drop the "what could not be verified" block even when it is empty.
 
 Use these labels:
 

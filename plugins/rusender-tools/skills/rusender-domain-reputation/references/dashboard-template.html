@@ -181,6 +181,7 @@
           ]
         }
       },
+      "blacklist": {"state": "unknown", "label": "В 45 доступных доменных списках попаданий нет. Это не доказательство чистоты: проверка best-effort, часть списков могла не ответить.", "check_url": "https://check.spamhaus.org/results/?query=example.com"},
       "postmaster": {"state": "unavailable", "label": "Google Postmaster: продуктовый OAuth-клиент не настроен"}
     }
   ],
@@ -262,6 +263,7 @@
           <table><thead><tr><th>Проверка</th><th>Состояние</th><th>Наблюдаемое значение</th><th>Комментарий</th></tr></thead><tbody>
           ${(d.auth || []).map(a => `<tr><td>${esc(a.check)}</td><td>${badge(a.state)}</td><td><code>${esc(a.value)}</code></td><td>${esc(a.note)}</td></tr>`).join('')}
           </tbody></table></div>
+        <div class="card"><h3>Чёрные списки</h3><p>${badge(d.blacklist?.state || 'unknown')} ${esc(d.blacklist?.label || 'Проверка не запускалась.')}</p>${d.blacklist?.check_url ? `<p style="margin:10px 0 0"><a href="${esc(d.blacklist.check_url)}">Перепроверить в Spamhaus ↗</a></p>` : ''}</div>
         <div class="card"><h3>Регистрация</h3>${d.registration ? `<p>Создан <b>${esc(d.registration.created)}</b> (${esc(d.registration.age_label)})<br>Истекает <b>${esc(d.registration.expires)}</b><br>Регистратор: ${esc(d.registration.registrar)}</p>` : '<p class="empty">Данные WHOIS недоступны.</p>'}</div>
         <div class="card"><h3>Google Postmaster</h3><p>${badge(d.postmaster?.state || 'unknown')} ${esc(d.postmaster?.label || '')}</p></div>
         <div class="card" style="grid-column:1/-1"><h3>Отправки через RuSender · ${esc(d.sending?.period?.from)} — ${esc(d.sending?.period?.to)}</h3>
