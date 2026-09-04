@@ -1,12 +1,12 @@
 {
   "name": "rusender-marketplace",
-  "description": "Скиллы для работы с RuSender: домены, DNS, репутация, доставляемость",
+  "description": "Скиллы для работы с RuSender: рассылки, отчёты, домены, DNS, репутация, доставляемость, обучающий курс",
   "owner": { "name": "Artyom" },
   "plugins": [
     {
       "name": "rusender-tools",
       "source": "./plugins/rusender-tools",
-      "description": "Верификация доменов RuSender (DKIM/SPF/DMARC) через Timeweb DNS, аудит репутации доменов, end-to-end тест доставляемости писем"
+      "description": "Полный набор скиллов RuSender: создание и очистка рассылок, дашборды по кампаниям/A/B/аккаунту/таймлайну, мульти-провайдерные A/B-тесты, верификация доменов через Timeweb DNS, аудит репутации, тест доставляемости, интерактивный курс"
     }
   ]
 }
