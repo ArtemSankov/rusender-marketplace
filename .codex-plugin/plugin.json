@@ -1,0 +1,18 @@
+{
+  "name": "rusender-tools",
+  "version": "0.2.0",
+  "description": "Скиллы для RuSender: настройка DNS, аудит репутации и проверка доставляемости",
+  "author": {
+    "name": "Artyom",
+    "url": "https://github.com/ArtemSankov"
+  },
+  "repository": "https://github.com/ArtemSankov/rusender-marketplace",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "RuSender Tools",
+    "shortDescription": "Инструменты для доменов и доставляемости RuSender",
+    "longDescription": "Настройка DKIM/SPF/DMARC, аудит репутации домена и тестирование доставляемости писем.",
+    "developerName": "Artyom",
+    "category": "Productivity"
+  }
+}
