@@ -1,0 +1,12 @@
+{
+  "name": "rusender-marketplace",
+  "description": "Скиллы для работы с RuSender: домены, DNS, рассылки",
+  "owner": { "name": "Artyom" },
+  "plugins": [
+    {
+      "name": "rusender-tools",
+      "source": "./plugins/rusender-tools",
+      "description": "Проверка доменов RuSender (DKIM/SPF/DMARC) и добавление DNS-записей через Timeweb Cloud API"
+    }
+  ]
+}
