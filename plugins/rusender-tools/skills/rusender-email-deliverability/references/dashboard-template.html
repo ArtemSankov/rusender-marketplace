@@ -10,6 +10,7 @@
       the checker's numeric score is NOT shown — the agent's conclusion is;
     - problems: 0–6 items that materially affect inbox placement;
     - actions: concrete steps ordered by impact, each tied to a problem;
+      (problem.detail, problem.who and action.text accept inline HTML such as <code>);
     - ok: one line naming what is fine, so the reader trusts the verdict;
     - unverified: what could not be checked.
   Do NOT paste the checker's check table, per-check titles or its fixes list.
@@ -147,7 +148,7 @@
     <div class="facts">${(D.facts || []).map(f => `<div class="fact"><b>${esc(f.value)}</b>${esc(f.label)}</div>`).join('')}</div>`;
   const problems = D.problems || [];
   document.getElementById('problems').innerHTML = problems.length
-    ? problems.map(p => `<div class="problem" data-state="${esc(p.state)}"><b>${badge(p.state)} ${esc(p.title)}</b><p>${p.detail}</p>${p.who ? `<div class="who">${esc(p.who)}</div>` : ''}</div>`).join('')
+    ? problems.map(p => `<div class="problem" data-state="${esc(p.state)}"><b>${badge(p.state)} ${esc(p.title)}</b><p>${p.detail}</p>${p.who ? `<div class="who">${p.who}</div>` : ''}</div>`).join('')
     : '<p class="empty" style="padding:0 4px">Проблем, влияющих на доставляемость, не найдено.</p>';
   document.getElementById('actions').innerHTML = (D.actions || []).map(a => `<li>${a.text}${a.why ? `<small>${esc(a.why)}</small>` : ''}</li>`).join('') || '<li class="empty">Действий не требуется.</li>';
   document.getElementById('ok').textContent = D.ok || '';
