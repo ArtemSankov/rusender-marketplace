@@ -1,6 +1,6 @@
 {
   "name": "rusender-tools",
-  "description": "Скиллы для RuSender",
-  "version": "0.1.0",
+  "description": "Скиллы для RuSender: верификация домена и DNS через Timeweb, аудит репутации доменов, тест доставляемости писем",
+  "version": "0.2.0",
   "author": { "name": "Artyom" }
 }

@@ -1,0 +1,9 @@
+interface:
+  display_name: "RuSender Domain Reputation"
+  short_description: "Audit RuSender domains from raw evidence"
+  default_prompt: "Use $rusender-domain-reputation to collect raw domain evidence, offer Google Postmaster connection, and author a dashboard in my language."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "rusender"
+      description: "RuSender MCP for domains, campaigns and transactional mail statistics"

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ru">
+<!--
+  RuSender domain reputation — dashboard template.
+
+  How to use (agent):
+  1. Copy this file, keep the CSS tokens, section order and the render() code.
+  2. Replace the contents of <script id="audit-data"> with data taken from the
+     snapshot (see references/snapshot-contract.md). The JSON must not contain
+     recipients, tokens, or message content.
+  3. Replace every element marked data-fill="..." with prose in the user's
+     language. Delete a section only when there is no evidence AND the gap is
+     listed in the "Не удалось проверить" block.
+  4. Status machine states stay in data-state attributes (healthy | attention |
+     critical | unknown); only the visible text is translated.
+  Charts are inline SVG rendered by the script below; no CDN, works offline.
+-->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-fill="title">Репутация доменов RuSender — ximen.ru</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --border: rgba(11,11,11,.10);
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7;
+    --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+    --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
+    --healthy: #0ca30c; --attention: #fab219; --critical: #d03b3b; --unknown: #898781;
+    --healthy-bg: #e6f6e6; --attention-bg: #fff4d6; --critical-bg: #fbe3e3; --unknown-bg: #efeeea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --border: rgba(255,255,255,.10);
+      --ink: #fff; --ink-2: #c3c2b7; --muted: #898781; --grid: #2c2c2a; --axis: #383835;
+      --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+      --series-5: #d55181; --series-7: #9085e9; --series-8: #e66767;
+      --healthy-bg: #10301a; --attention-bg: #3a2e0c; --critical-bg: #3d1616; --unknown-bg: #262624;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 40px 0 12px; }
+  h3 { font-size: 15px; margin: 0 0 8px; color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: var(--ink-2); margin: 0 0 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .v { font-size: 26px; font-weight: 600; line-height: 1.1; }
+  .tile .l { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .badge[data-state="healthy"] { background: var(--healthy-bg); color: var(--healthy); }
+  .badge[data-state="attention"] { background: var(--attention-bg); color: #7a5300; }
+  .badge[data-state="critical"] { background: var(--critical-bg); color: var(--critical); }
+  .badge[data-state="unknown"] { background: var(--unknown-bg); color: var(--unknown); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .badge[data-state="attention"] { color: var(--attention); } }
+  :root[data-theme="dark"] .badge[data-state="attention"] { color: var(--attention); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; font-size: 13px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--unknown-bg); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+  .finding { border-left: 3px solid var(--unknown); padding: 8px 14px; margin: 10px 0; background: var(--surface); border-radius: 0 8px 8px 0; }
+  .finding[data-state="critical"] { border-color: var(--critical); }
+  .finding[data-state="attention"] { border-color: var(--attention); }
+  .finding[data-state="healthy"] { border-color: var(--healthy); }
+  .finding b { display: block; }
+  .finding p { margin: 4px 0 0; color: var(--ink-2); }
+  ol.actions li { margin: 6px 0; }
+  .chart { width: 100%; height: auto; display: block; overflow: visible; }
+  .chart text { fill: var(--muted); font-size: 11px; }
+  .chart .grid line { stroke: var(--grid); }
+  .chart .axis { stroke: var(--axis); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: var(--c); vertical-align: -1px; }
+  .unverified { background: var(--unknown-bg); }
+  .unverified li { margin: 4px 0; }
+  .tooltip { position: fixed; pointer-events: none; background: var(--ink); color: var(--page); font-size: 12px; padding: 6px 8px; border-radius: 6px; opacity: 0; transition: opacity .1s; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 48px; }
+  .empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+
+  <!-- ===== 1. Заголовок и портфельная сводка ===== -->
+  <header>
+    <h1 data-fill="title">Репутация доменов RuSender</h1>
+    <p class="sub" data-fill="subtitle">Аккаунт: <span>ximen.ru</span> · период 06.08–04.09.2026 · сформировано 04.09.2026 18:50 (UTC+3)</p>
+  </header>
+
+  <section class="tiles" id="portfolio-tiles"><!-- rendered from AUDIT.portfolio --></section>
+
+  <!-- ===== 2. По одному блоку на домен ===== -->
+  <section id="domains"><!-- rendered from AUDIT.domains, prose from data-fill blocks below --></section>
+
+  <!-- ===== 3. Что не удалось проверить ===== -->
+  <section class="card unverified" id="unverified">
+    <h2 style="margin-top:0">Что не удалось проверить</h2>
+    <p data-fill="unverified-intro">Эти проверки не дали результата. Они не учтены ни как плюс, ни как минус в оценке.</p>
+    <ul id="unverified-list"></ul>
+  </section>
+
+  <footer data-fill="footer">
+    Источники: RuSender MCP (домены, письма), прямые DNS-запросы к резолверам, WHOIS реестра, Google Postmaster (если подключён).
+    Оценка основана только на собранных данных; изменения DNS считаются применёнными после следующего аудита.
+  </footer>
+</main>
+
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Prose templates per domain: the agent edits text here, render() clones them. -->
+<template id="domain-prose">
+  <div data-domain="ximen.ru">
+    <p data-slot="summary">Аутентификация настроена и подтверждена RuSender, но DMARC работает в режиме наблюдения. Объём отправок за период минимальный, поэтому статистика жалоб и ошибок не показательна.</p>
+    <div data-slot="findings">
+      <div class="finding" data-state="attention"><b>DMARC не защищает домен (p=none)</b><p>Наблюдаемая запись: <code>v=DMARC1; p=none; rua=mailto:postmaster@mx1.rusender-mail.ru</code>. Подделанные письма от вашего имени не будут отклоняться.</p></div>
+      <div class="finding" data-state="attention"><b>Один hard bounce из пяти писем</b><p>При таком объёме это не тренд, но адрес стоит удалить из базы.</p></div>
+    </div>
+    <ol class="actions" data-slot="actions">
+      <li>Убедиться, что все легитимные отправители подписывают письма DKIM с выравниванием, затем перевести DMARC в <code>p=quarantine; pct=10</code> и наращивать pct.</li>
+      <li>Удалить адреса с hard bounce из списков контактов.</li>
+    </ol>
+  </div>
+</template>
+
+<!-- ===== Data: replace with values from the snapshot. No recipients, tokens or message content. ===== -->
+<script id="audit-data" type="application/json">
+{
+  "locale": "ru",
+  "portfolio": [
+    {"value": "1", "label": "доменов в аккаунте"},
+    {"value": "0 / 1 / 0", "label": "critical / attention / healthy"},
+    {"value": "5", "label": "писем за период"},
+    {"value": "0,0 %", "label": "жалоб от доставленных"},
+    {"value": "20 %", "label": "hard bounce"}
+  ],
+  "domains": [
+    {
+      "name": "ximen.ru",
+      "state": "attention",
+      "dashboard_url": "https://app.rusender.ru/settings/domain/8586",
+      "auth": [
+        {"check": "SPF", "state": "healthy", "value": "v=spf1 include:rsndr.ru ~all", "note": "1 запись, подтверждена RuSender"},
+        {"check": "DKIM (mdmdmail)", "state": "healthy", "value": "v=DKIM1;k=rsa;p=MIIBIjANBg…", "note": "ключ RSA 2048, подтверждён RuSender"},
+        {"check": "DMARC", "state": "attention", "value": "v=DMARC1; p=none; rua=mailto:postmaster@mx1.rusender-mail.ru", "note": "режим наблюдения"},
+        {"check": "MX", "state": "healthy", "value": "10 mx100.ucozmail.com.", "note": ""},
+        {"check": "DNSSEC", "state": "healthy", "value": "не настроен", "note": "необязательно"},
+        {"check": "BIMI / MTA-STS / TLS-RPT", "state": "healthy", "value": "отсутствуют", "note": "необязательно"}
+      ],
+      "registration": {"created": "2017-01-19", "expires": "2027-01-19", "registrar": "REGRU-RU", "age_label": "9 лет 7 мес"},
+      "sending": {
+        "period": {"from": "2026-08-06", "to": "2026-09-04"},
+        "totals": {"all": 5, "delivered": 4, "hard_bounced": 1, "soft_bounced": 0, "error": 0, "complaint": 0, "unsubscribed": 0},
+        "daily": [
+          {"date": "2026-08-30", "all": 0, "delivered": 0, "hard_bounced": 0, "soft_bounced": 0, "complaint": 0},
+          {"date": "2026-08-31", "all": 0, "delivered": 0, "hard_bounced": 0, "soft_bounced": 0, "complaint": 0},
+          {"date": "2026-09-01", "all": 0, "delivered": 0, "hard_bounced": 0, "soft_bounced": 0, "complaint": 0},
+          {"date": "2026-09-02", "all": 3, "delivered": 2, "hard_bounced": 1, "soft_bounced": 0, "complaint": 0},
+          {"date": "2026-09-03", "all": 0, "delivered": 0, "hard_bounced": 0, "soft_bounced": 0, "complaint": 0},
+          {"date": "2026-09-04", "all": 1, "delivered": 1, "hard_bounced": 0, "soft_bounced": 0, "complaint": 0}
+        ],
+        "by_provider": [
+          {"label": "Mail.ru (VK)", "all": 3, "delivered": 2, "hard_bounced": 1, "soft_bounced": 0, "complaint": 0},
+          {"label": "Gmail", "all": 1, "delivered": 1, "hard_bounced": 0, "soft_bounced": 0, "complaint": 0},
+          {"label": "Другие / корпоративные", "all": 1, "delivered": 1, "hard_bounced": 0, "soft_bounced": 0, "complaint": 0}
+        ],
+        "assessment": {
+          "sending_state": "attention",
+          "sample_sufficient": false,
+          "signals": [
+            {"id": "low_sample", "state": "attention", "label": "Мало данных", "value": "5 писем", "threshold": "нужно ≥ 100", "detail": "Доли ниже ориентировочные, статистически не значимы."},
+            {"id": "complaint_rate", "state": "healthy", "label": "Жалобы", "value": "0,00 %", "threshold": "внимание ≥ 0,10 %, критично ≥ 0,30 %", "detail": "0 из 4 доставленных."},
+            {"id": "hard_bounce_rate", "state": "critical", "label": "Hard bounce", "value": "20,0 %", "threshold": "внимание ≥ 2 %, критично ≥ 5 %", "detail": "1 из 5. Из-за малой выборки итоговое состояние понижено до «требует внимания»."},
+            {"id": "delivered_rate", "state": "critical", "label": "Доставляемость", "value": "80 %", "threshold": "внимание ≤ 97 %, критично ≤ 90 %", "detail": "4 из 5."}
+          ]
+        }
+      },
+      "postmaster": {"state": "unavailable", "label": "Google Postmaster: продуктовый OAuth-клиент не настроен"}
+    }
+  ],
+  "unverified": [
+    {"check": "Google Postmaster (Gmail)", "reason": "продуктовый OAuth-клиент не настроен; блокер на стороне дистрибутора плагина"},
+    {"check": "Чёрные списки доменов (MultiRBL)", "reason": "проверка не запускалась"},
+    {"check": "Статистика рассылок (campaigns)", "reason": "в аккаунте нет завершённых кампаний за период"}
+  ]
+}
+</script>
+
+<script>
+(function () {
+  const AUDIT = JSON.parse(document.getElementById('audit-data').textContent);
+  const STATE_LABEL = {healthy: 'В порядке', attention: 'Требует внимания', critical: 'Критично', unknown: 'Нет данных', unavailable: 'Недоступно'};
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const badge = st => `<span class="badge" data-state="${esc(st in STATE_LABEL && st !== 'unavailable' ? st : 'unknown')}">${esc(STATE_LABEL[st] || st)}</span>`;
+  const pct = (a, b) => b > 0 ? (100 * a / b).toLocaleString('ru-RU', {maximumFractionDigits: 1}) + ' %' : '—';
+  const tip = document.getElementById('tooltip');
+  function showTip(e, html) { tip.innerHTML = html; tip.style.opacity = 1; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 10) + 'px'; }
+  function hideTip() { tip.style.opacity = 0; }
+
+  // --- portfolio tiles
+  document.getElementById('portfolio-tiles').innerHTML = AUDIT.portfolio.map(t =>
+    `<div class="tile"><div class="v">${esc(t.value)}</div><div class="l">${esc(t.label)}</div></div>`).join('');
+
+  // --- daily bars: sent volume with bounce/complaint stacked (one axis, categorical fixed order)
+  function dailyChart(daily) {
+    if (!daily || !daily.length || !daily.some(d => d.all > 0)) return '<p class="empty">За период отправок не было.</p>';
+    const W = 720, H = 200, L = 36, R = 8, T = 10, B = 28;
+    const max = Math.max(1, ...daily.map(d => d.all));
+    const bw = (W - L - R) / daily.length;
+    const y = v => T + (H - T - B) * (1 - v / max);
+    const ticks = [0, max / 2, max].map(v => Math.round(v));
+    let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Отправки по дням">`;
+    s += `<g class="grid">${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join('')}</g>`;
+    daily.forEach((d, i) => {
+      const x = L + i * bw + bw * 0.15, w = bw * 0.7;
+      const ok = d.delivered || 0, bad = (d.hard_bounced || 0) + (d.soft_bounced || 0) + (d.error || 0), cmp = d.complaint || 0;
+      const rest = Math.max(0, d.all - ok - bad - cmp);
+      let base = 0;
+      const seg = (v, cls) => { if (!v) return ''; const r = `<rect x="${x}" width="${w}" y="${y(base + v)}" height="${Math.max(0, y(base) - y(base + v) - (base ? 2 : 0))}" rx="3" fill="var(${cls})" data-tip="${esc(d.date)}: всего ${d.all}, доставлено ${ok}, ошибок ${bad}, жалоб ${cmp}"/>`; base += v; return r; };
+      s += seg(ok, '--series-1') + seg(bad, '--series-2') + seg(cmp, '--series-8') + seg(rest, '--unknown');
+      if (daily.length <= 31 && (i % Math.ceil(daily.length / 10) === 0 || i === daily.length - 1)) s += `<text x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${esc(d.date.slice(5))}</text>`;
+    });
+    s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/></svg>`;
+    s += `<div class="legend"><span style="--c:var(--series-1)">Доставлено</span><span style="--c:var(--series-2)">Ошибки и bounce</span><span style="--c:var(--series-8)">Жалобы</span><span style="--c:var(--unknown)">В процессе / прочее</span></div>`;
+    return s;
+  }
+
+  // --- provider table with proportional bars (single hue = magnitude)
+  function providerTable(rows) {
+    if (!rows || !rows.length) return '<p class="empty">Нет данных о получателях.</p>';
+    const max = Math.max(1, ...rows.map(r => r.all));
+    return `<table><thead><tr><th>Провайдер</th><th class="num">Писем</th><th></th><th class="num">Доставлено</th><th class="num">Bounce</th><th class="num">Жалобы</th></tr></thead><tbody>` +
+      rows.map(r => `<tr><td>${esc(r.label)}</td><td class="num">${r.all}</td><td style="width:30%"><svg class="chart" viewBox="0 0 100 10" preserveAspectRatio="none" style="height:10px"><rect x="0" y="0" width="${100 * r.all / max}" height="10" rx="2" fill="var(--series-1)"/></svg></td><td class="num">${pct(r.delivered, r.all)}</td><td class="num">${pct((r.hard_bounced || 0) + (r.soft_bounced || 0), r.all)}</td><td class="num">${pct(r.complaint, r.delivered)}</td></tr>`).join('') +
+      `</tbody></table>`;
+  }
+
+  // --- reputation signals computed by scripts/aggregate_mails.mjs (labels translated by the agent)
+  function signalsTable(a) {
+    if (!a || !a.signals || !a.signals.length) return '<p class="empty">Сигналы не рассчитаны: нет данных об отправках.</p>';
+    return `<table><thead><tr><th>Сигнал</th><th>Состояние</th><th class="num">Значение</th><th>Порог</th><th>Пояснение</th></tr></thead><tbody>` +
+      a.signals.map(x => `<tr><td>${esc(x.label || x.id)}</td><td>${badge(x.state)}</td><td class="num">${esc(x.value)}</td><td style="color:var(--muted)">${esc(x.threshold)}</td><td>${esc(x.detail)}</td></tr>`).join('') +
+      `</tbody></table>`;
+  }
+
+  // --- domain sections
+  const proseTpl = document.getElementById('domain-prose').content;
+  document.getElementById('domains').innerHTML = AUDIT.domains.map(d => {
+    const prose = proseTpl.querySelector(`[data-domain="${d.name}"]`);
+    const slot = n => prose ? (prose.querySelector(`[data-slot="${n}"]`)?.outerHTML || '') : '';
+    const t = d.sending?.totals || {};
+    return `<article data-state="${esc(d.state)}">
+      <h2>${esc(d.name)} ${badge(d.state)}${d.dashboard_url ? ` <a href="${esc(d.dashboard_url)}" style="font-size:14px;font-weight:400;margin-left:8px">настройки в RuSender ↗</a>` : ''}</h2>
+      ${slot('summary')}
+      <div class="grid">
+        <div class="card" style="grid-column:1/-1"><h3>Аутентификация и DNS</h3>
+          <table><thead><tr><th>Проверка</th><th>Состояние</th><th>Наблюдаемое значение</th><th>Комментарий</th></tr></thead><tbody>
+          ${(d.auth || []).map(a => `<tr><td>${esc(a.check)}</td><td>${badge(a.state)}</td><td><code>${esc(a.value)}</code></td><td>${esc(a.note)}</td></tr>`).join('')}
+          </tbody></table></div>
+        <div class="card"><h3>Регистрация</h3>${d.registration ? `<p>Создан <b>${esc(d.registration.created)}</b> (${esc(d.registration.age_label)})<br>Истекает <b>${esc(d.registration.expires)}</b><br>Регистратор: ${esc(d.registration.registrar)}</p>` : '<p class="empty">Данные WHOIS недоступны.</p>'}</div>
+        <div class="card"><h3>Google Postmaster</h3><p>${badge(d.postmaster?.state || 'unknown')} ${esc(d.postmaster?.label || '')}</p></div>
+        <div class="card" style="grid-column:1/-1"><h3>Отправки через RuSender · ${esc(d.sending?.period?.from)} — ${esc(d.sending?.period?.to)}</h3>
+          <div class="tiles" style="margin-bottom:16px">
+            <div class="tile"><div class="v">${t.all ?? '—'}</div><div class="l">писем</div></div>
+            <div class="tile"><div class="v">${pct(t.delivered, t.all)}</div><div class="l">доставлено</div></div>
+            <div class="tile"><div class="v">${pct(t.hard_bounced, t.all)}</div><div class="l">hard bounce</div></div>
+            <div class="tile"><div class="v">${pct(t.complaint, t.delivered)}</div><div class="l">жалоб</div></div>
+          </div>
+          ${dailyChart(d.sending?.daily)}
+          <h3 style="margin-top:20px">По почтовым провайдерам</h3>
+          ${providerTable(d.sending?.by_provider)}
+          <h3 style="margin-top:20px">Сигналы репутации отправок ${badge(d.sending?.assessment?.sending_state || 'unknown')}</h3>
+          ${signalsTable(d.sending?.assessment)}
+        </div>
+        <div class="card" style="grid-column:1/-1"><h3>Находки</h3>${slot('findings') || '<p class="empty">Существенных находок нет.</p>'}
+          <h3 style="margin-top:16px">Рекомендуемые действия</h3>${slot('actions') || '<p class="empty">Действий не требуется.</p>'}</div>
+      </div>
+    </article>`;
+  }).join('');
+
+  // --- unverified
+  document.getElementById('unverified-list').innerHTML = (AUDIT.unverified || []).map(u =>
+    `<li>${badge('unknown')} <b>${esc(u.check)}</b> — ${esc(u.reason)}</li>`).join('') || '<li class="empty">Все запланированные проверки выполнены.</li>';
+  if (!(AUDIT.unverified || []).length) document.getElementById('unverified').classList.remove('unverified');
+
+  document.addEventListener('mousemove', e => { const t = e.target.closest?.('[data-tip]'); t ? showTip(e, esc(t.dataset.tip)) : hideTip(); });
+})();
+</script>
+</body>
+</html>

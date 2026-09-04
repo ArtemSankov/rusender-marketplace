@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<!--
+  RuSender email deliverability — digest template.
+
+  This is a DIGEST, not a copy of the checker report. The agent reads the
+  checker output and RuSender evidence, decides what really affects
+  deliverability, and writes:
+    - verdict: one state, a headline in the agent's own words and one paragraph;
+      the checker's numeric score is NOT shown — the agent's conclusion is;
+    - problems: 0–6 items that materially affect inbox placement;
+    - actions: concrete steps ordered by impact, each tied to a problem;
+    - ok: one line naming what is fine, so the reader trusts the verdict;
+    - unverified: what could not be checked.
+  Do NOT paste the checker's check table, per-check titles or its fixes list.
+
+  How to use (agent):
+  1. Copy this file, keep CSS tokens, section order and the render script.
+  2. Replace the JSON in <script id="digest-data"> with this test's digest.
+     Never include the checker address, slug, report_url, recipient addresses,
+     bodies or raw headers.
+  3. All prose in the user's language. Protocol values stay verbatim.
+  Shares palette and badges with the rusender-domain-reputation dashboard.
+-->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-fill="title">Проверка письма RuSender — Осенняя акция</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --border: rgba(11,11,11,.10);
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781; --grid: #e1e0d9;
+    --series-1: #2a78d6;
+    --healthy: #0ca30c; --attention: #fab219; --critical: #d03b3b; --unknown: #898781;
+    --healthy-bg: #e6f6e6; --attention-bg: #fff4d6; --critical-bg: #fbe3e3; --unknown-bg: #efeeea;
+    --attention-ink: #7a5300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --border: rgba(255,255,255,.10);
+      --ink: #fff; --ink-2: #c3c2b7; --grid: #2c2c2a; --series-1: #3987e5;
+      --healthy-bg: #10301a; --attention-bg: #3a2e0c; --critical-bg: #3d1616; --unknown-bg: #262624;
+      --attention-ink: #fab219;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 880px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 12px; }
+  .sub { color: var(--ink-2); margin: 0 0 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; }
+  .verdict { display: flex; gap: 24px; align-items: center; }
+  .verdict .mark { flex: none; width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 44px; color: #fff; }
+  .verdict .mark[data-state="healthy"] { background: var(--healthy); } .verdict .mark[data-state="attention"] { background: var(--attention); color: #3a2e0c; } .verdict .mark[data-state="critical"] { background: var(--critical); } .verdict .mark[data-state="unknown"] { background: var(--unknown); }
+  .verdict .n { font-size: 28px; font-weight: 600; line-height: 1.15; }
+  .verdict .n small { display: block; font-size: 15px; font-weight: 400; color: var(--ink-2); margin-top: 4px; }
+  .verdict p { margin: 10px 0 0; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; vertical-align: middle; }
+  .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .badge[data-state="healthy"] { background: var(--healthy-bg); color: var(--healthy); }
+  .badge[data-state="attention"] { background: var(--attention-bg); color: var(--attention-ink); }
+  .badge[data-state="critical"] { background: var(--critical-bg); color: var(--critical); }
+  .badge[data-state="unknown"] { background: var(--unknown-bg); color: var(--unknown); }
+  .facts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 16px; }
+  .fact { border-top: 1px solid var(--grid); padding-top: 8px; font-size: 14px; color: var(--ink-2); }
+  .fact b { display: block; color: var(--ink); font-weight: 600; }
+  .problem { border-left: 3px solid var(--unknown); padding: 10px 16px; margin: 12px 0; background: var(--surface); border-radius: 0 10px 10px 0; }
+  .problem[data-state="critical"] { border-color: var(--critical); }
+  .problem[data-state="attention"] { border-color: var(--attention); }
+  .problem b { display: block; font-size: 15px; }
+  .problem p { margin: 4px 0 0; color: var(--ink-2); }
+  .problem .who { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  ol.actions { padding-left: 22px; } ol.actions li { margin: 8px 0; }
+  ol.actions li small { display: block; color: var(--muted); font-size: 13px; }
+  code { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--unknown-bg); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+  .ok { color: var(--ink-2); }
+  .note { background: var(--unknown-bg); }
+  .note ul { margin: 8px 0 0; padding-left: 20px; } .note li { margin: 4px 0; }
+  .empty { color: var(--muted); font-style: italic; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 data-fill="title">Проверка письма перед отправкой</h1>
+    <p class="sub" data-fill="subtitle">Кампания «Осенняя акция» · отправитель news@example.com · 04.09.2026 19:05 (UTC+3)</p>
+  </header>
+
+  <section class="card" id="verdict"></section>
+
+  <h2 id="problems-h">Что реально мешает доставляемости</h2>
+  <section id="problems"></section>
+
+  <h2>Что сделать</h2>
+  <section class="card"><ol class="actions" id="actions"></ol></section>
+
+  <h2>Что в порядке</h2>
+  <section class="card"><p class="ok" id="ok"></p></section>
+
+  <section class="card note" id="unverified" style="margin-top:32px">
+    <h2 style="margin-top:0">Что не удалось проверить</h2>
+    <ul id="unverified-list"></ul>
+  </section>
+
+  <footer data-fill="footer">
+    Результат относится к этому письму и этой отправке через RuSender. Он не гарантирует попадание во «Входящие» у Gmail, Mail.ru, Яндекса или другого провайдера и может отличаться при следующей отправке.
+  </footer>
+</main>
+
+<script id="digest-data" type="application/json">
+{
+  "locale": "ru",
+  "state": "attention",
+  "headline": "Письмо можно отправлять после одной правки",
+  "readiness": "готово с оговорками",
+  "verdict": "Письмо доставлено, аутентификация проходит, спам-фильтры чистые. До основной рассылки стоит закрыть один пробел: письмо без текстовой версии, из-за чего часть фильтров считает его подозрительным.",
+  "facts": [
+    {"label": "Отправка через RuSender", "value": "Доставлено, тестовая кампания завершена"},
+    {"label": "Спам-фильтры", "value": "SpamAssassin 0.8 / 5, Rspamd 3.1 / 15"},
+    {"label": "Аутентификация", "value": "SPF, DKIM и DMARC проходят"},
+    {"label": "Полнота проверки", "value": "Все проверки выполнены"}
+  ],
+  "problems": [
+    {"state": "attention", "title": "Нет текстовой версии письма", "detail": "Письмо содержит только HTML. Фильтры Gmail и Mail.ru считают это признаком автоматической рассылки низкого качества.", "who": "Исправляется в шаблоне RuSender"}
+  ],
+  "actions": [
+    {"text": "Добавить текстовую версию письма в редакторе шаблона.", "why": "Закрывает единственную найденную проблему."}
+  ],
+  "ok": "SPF и DKIM проходят и выровнены с доменом отправителя, DMARC в режиме quarantine, IP отправки не в чёрных списках, TLS есть, ссылки исправны, вредоносного содержимого нет, тема письма без стоп-слов.",
+  "unverified": []
+}
+</script>
+
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById('digest-data').textContent);
+  const LABEL = {healthy: 'В порядке', attention: 'Требует внимания', critical: 'Критично', unknown: 'Нет данных'};
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const badge = st => `<span class="badge" data-state="${esc(LABEL[st] ? st : 'unknown')}">${esc(LABEL[st] || st)}</span>`;
+  const MARK = {healthy: '✓', attention: '!', critical: '✕', unknown: '?'};
+  document.getElementById('verdict').innerHTML = `
+    <div class="verdict"><div class="mark" data-state="${esc(D.state)}" aria-hidden="true">${MARK[D.state] || '?'}</div><div><div class="n">${esc(D.headline)}<small>${badge(D.state)} ${esc(D.readiness || '')}</small></div><p>${esc(D.verdict)}</p></div></div>
+    <div class="facts">${(D.facts || []).map(f => `<div class="fact"><b>${esc(f.value)}</b>${esc(f.label)}</div>`).join('')}</div>`;
+  const problems = D.problems || [];
+  document.getElementById('problems').innerHTML = problems.length
+    ? problems.map(p => `<div class="problem" data-state="${esc(p.state)}"><b>${badge(p.state)} ${esc(p.title)}</b><p>${p.detail}</p>${p.who ? `<div class="who">${esc(p.who)}</div>` : ''}</div>`).join('')
+    : '<p class="empty" style="padding:0 4px">Проблем, влияющих на доставляемость, не найдено.</p>';
+  document.getElementById('actions').innerHTML = (D.actions || []).map(a => `<li>${a.text}${a.why ? `<small>${esc(a.why)}</small>` : ''}</li>`).join('') || '<li class="empty">Действий не требуется.</li>';
+  document.getElementById('ok').textContent = D.ok || '';
+  const un = D.unverified || [];
+  document.getElementById('unverified-list').innerHTML = un.map(u => `<li>${badge('unknown')} <b>${esc(u.check)}</b> — ${esc(u.reason)}</li>`).join('') || '<li class="empty">Все запланированные проверки выполнены.</li>';
+  if (!un.length) document.getElementById('unverified').classList.remove('note');
+})();
+</script>
+</body>
+</html>

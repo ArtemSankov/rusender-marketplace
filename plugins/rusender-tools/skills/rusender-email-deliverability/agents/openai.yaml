@@ -1,0 +1,9 @@
+interface:
+  display_name: "Проверка письма RuSender"
+  short_description: "End-to-end проверка письма через RuSender"
+  default_prompt: "Используй $rusender-email-deliverability, чтобы отправить тестовое письмо через RuSender и подготовить отчёт о доставляемости."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "rusender"
+      description: "RuSender MCP for campaigns, contacts, templates, senders, and transactional sends"
